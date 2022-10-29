@@ -3,5 +3,5 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Keyset : ScriptableObject {
-   public List<string> keys;
+   public List<string> dialogueNames;
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -14,11 +15,10 @@ public class KeysetCreatorWindow : EditorWindow {
 
 	private GUISkin skin;
 
-	private List<string> keys;
+	private List<string> dialogueNames;
 
 	private Vector2 scrollPos;
-	private int dialogHeight = 80;
-	private int keyNum = 1;
+	private int dialogueNum = 1;
 	private string keysetName = "";
 
 	[MenuItem("Window/Keyset Creator")]
@@ -32,8 +32,8 @@ public class KeysetCreatorWindow : EditorWindow {
 		InitTextures();
 		skin = Resources.Load<GUISkin>("GUISkins/DialogWindowSkin");
 
-		keys = new List<string>();
-		keys.Add("");
+		dialogueNames = new List<string>();
+		dialogueNames.Add("");
 	}
 
 	private void InitTextures() {
@@ -49,7 +49,7 @@ public class KeysetCreatorWindow : EditorWindow {
 	private void OnGUI() {
 		DrawLayouts();
 		DrawHeaderSection();
-		DrawDialogSection();
+		DrawKeysetSection();
 	}
 
 	private void DrawLayouts() {
@@ -77,30 +77,30 @@ public class KeysetCreatorWindow : EditorWindow {
 		GUILayout.EndArea();
 	}
 
-	private void DrawDialogSection() {
+	private void DrawKeysetSection() {
 		GUILayout.BeginArea(keysetSection);
-		
+
+		EditorGUILayout.HelpBox("Create a name for a keyset (ex. MainMenu, Character1, etc.) and their names (dialogues). This keyset determines which dialogues can be added to a language.", MessageType.Info);
+
+		EditorGUILayout.Space(4);
+
 		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.Space(5);
-		GUILayout.Label("Keyset Name", skin.GetStyle("Dialog"));
-		GUILayout.FlexibleSpace();
-		keysetName = EditorGUILayout.TextField(keysetName, GUILayout.Width(position.width - 110));
+		GUILayout.Label("Keyset Name", GUILayout.Width(108));
+		keysetName = EditorGUILayout.TextField(keysetName);
 		EditorGUILayout.EndHorizontal();
 
 		EditorGUILayout.Space(4);
 
 		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.Space(5);
-		GUILayout.Label("Keys", skin.GetStyle("Dialog"), GUILayout.Width(50));
-		GUILayout.FlexibleSpace();
+		GUILayout.Label("Dialogue Names", GUILayout.Width(105));
 
 		EditorGUILayout.BeginVertical();
 		scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
-		for (int i = 0; i < keyNum; i++) {
+		for (int i = 0; i < dialogueNum; i++) {
 			EditorGUILayout.BeginHorizontal();
-			string language = EditorGUILayout.TextField(keys[i], GUILayout.Width(position.width - 110));
+			string language = EditorGUILayout.TextField(dialogueNames[i]);
 
-			keys[i] = language;
+			dialogueNames[i] = language;
 
 			EditorGUILayout.EndHorizontal();
 		}
@@ -111,25 +111,22 @@ public class KeysetCreatorWindow : EditorWindow {
 		GUILayout.FlexibleSpace();
 
 		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.Space(4);
 
-		if (GUILayout.Button("Save", skin.GetStyle("Button"), GUILayout.Width(50), GUILayout.Height(24))) {
-			SaveDialogData();
+		if (GUILayout.Button("Save", GUILayout.Width(50), GUILayout.Height(24))) {
+			SaveDialogueData();
 		}
 
 		GUILayout.FlexibleSpace();
 
-		if (GUILayout.Button("+", skin.GetStyle("Button"), GUILayout.Width(24), GUILayout.Height(24))) {
-			keys.Add("");
-			dialogHeight += 20;
-			keyNum++;
+		if (GUILayout.Button("+", GUILayout.Width(24), GUILayout.Height(24))) {
+			dialogueNames.Add("");
+			dialogueNum++;
 		}
 
-		if (GUILayout.Button("-", skin.GetStyle("Button"), GUILayout.Width(24), GUILayout.Height(24))) {
-			if (keyNum > 1) {
-				dialogHeight -= 20;
-				keyNum--;
-				keys.RemoveAt(keyNum);
+		if (GUILayout.Button("-", GUILayout.Width(24), GUILayout.Height(24))) {
+			if (dialogueNum > 1) {
+				dialogueNum--;
+				dialogueNames.RemoveAt(dialogueNum);
 			}
 		}
 
@@ -138,29 +135,34 @@ public class KeysetCreatorWindow : EditorWindow {
 		GUILayout.EndArea();
 	}
 
-	private void SaveDialogData() {
+	private void SaveDialogueData() {
 		if (keysetName == "")
 			EditorUtility.DisplayDialog("Missing Name", "Name for keyset required.", "Ok", "");
 		else {
-			keys = keys.Distinct().ToList();
-			keyNum = keys.Count();
+			dialogueNames = dialogueNames.Distinct().ToList();
+			dialogueNum = dialogueNames.Count();
 
-			for (int i = 0; i < keyNum; i++) {
-				if (keys[i] == "") {
-					if (keyNum == 1) {
+			for (int i = 0; i < dialogueNum; i++) {
+				if (dialogueNames[i] == "") {
+					if (dialogueNum == 1) {
 						EditorUtility.DisplayDialog("No Keys Entered", "There are no keys entered.", "Ok", "");
 						return;
 					}
 
-					keys.RemoveAt(i);
-					dialogHeight -= 20;
-					keyNum--;
+					dialogueNames.RemoveAt(i);
+					dialogueNum--;
 				}
 			}
 
+			string keysetPath = "Assets/Resources/Keysets/" + keysetName + ".asset";
 			Keyset keyset = (Keyset)CreateInstance(typeof(Keyset));
-			keyset.keys = keys;
-			AssetDatabase.CreateAsset(keyset, "Assets/Resources/Keysets/" + keysetName + ".asset");
+			keyset.dialogueNames = dialogueNames;
+			if (File.Exists(keysetPath)) {
+				EditorUtility.DisplayDialog("Keyset Already Exists", "A keyset with the name '" + keysetName + "' already exists.", "Ok", "");
+				return;
+			}
+
+			AssetDatabase.CreateAsset(keyset, keysetPath);
 		}
 	}
 }
